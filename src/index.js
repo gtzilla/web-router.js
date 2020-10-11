@@ -1,83 +1,253 @@
 'use strict';
 
+/**
+  See README.md and __tests__/src/index.test.js
+*/
+
 import _ from 'underscore';
 
 let _root;
-const pageLinkNames = ['[data-navigo]', '[data-route]'];
-const _routes = {};
-const DEBUG = false;
+let _routes = {};
+let DEBUG = false;
 let autoListen = true;
+let lastResolved = null;
+let pageLinkNames = ['[data-navigo]', '[data-route]'];
+/**
+  @param {array} items - an array of functions to recursively call
+  @param {object} params
+  @param {function} callback
 
-export function locationChange() {
-  console.log("locationChange()", arguments);
+  helper method to handle an array of functions
+*/
+function recursionMethods(items, params=null, callback) {
+  if(!items.length) { return callback(true); }
+  const first = _.first(items);
+  if(_.isFunction(first)) {
+    first((allow=true)=>{
+      if(!allow) { return callback(false); }
+      recursionMethods(_.rest(items), params, callback);
+    });
+  }
 }
 
+/**
+  Pass the callback through
+*/
+function callHook(hookType, info, params=null, callback=()=>{}) {
+  if(_.isFunction(info.hooks[hookType])) {
+    info.hooks[hookType]((allow=true)=>{
+      if(allow) { callback(allow) }
+    }, params);
+  } else if(_.isArray(info.hooks[hookType])) {
+    recursionMethods(info.hooks[hookType], params, (allow=true)=>{
+      if(allow) { callback(allow); }
+    });
+  } else {
+    callback();
+  }
+}
+/**
+  @param {object} info - the value matched from _routes
+  @param {object|array|null} - route matching
+*/
+function callBeforeAndMain(info, params=null) {
+  return callHook('before', info, params, (allow)=>{
+    if(_.isArray(params)) {
+      info.method.apply({}, params);
+    } else {
+      info.method(params);
+    }
+  });
+}
+/**
+  @param {object} info - the value matched from _routes
+  @param {object|array|null} - route matching
+  @param {function} callback - method to call when completed. 
+*/
+function callAfter(info, params=null, callback=(allow)=>{}) {
+  return callHook('after', info, params, callback);
+}
+
+/**
+  @param {object} info - the value matched from _routes
+  @param {object|array|null} - route matching
+  @param {function} callback - method to call when completed. 
+*/
+function callLeave(info, params=null, callback=(allow)=>{}) {
+  return callHook('leave', info, params, callback);
+}
+
+/**
+  @param {Event} evt - the window popstate event
+*/
+function locationChange(evt) {
+  if(lastResolved) {
+    if(DEBUG) console.log("was a last resolve", lastResolved);
+    callLeave(lastResolved, null);
+  }
+  this.resolve();
+  return this;
+}
+
+/**
+  A WebRouter that works with `popstate`
+  @class 
+*/
 export class WebRouter {
   constructor(path='/', routes={}) {
     _root = path;
-    for(const [key,value] in routes) {
-      this.on(key, value, {});
-    }
+    lastResolved = null;
+    for(const key in routes) {
+      const value = routes[key];
+      this.on(key, value);
+    }    
     if(autoListen) {
       this.listen();
       this.updatePageLinks();
     }
   }
+  /**
+    @param {string|RegExp} routeName
+    @param {function} method
+    @param {object} hooks of format {before, after, leave}
+  */
   on(routeName, method, hooks={}) {
     if(DEBUG) console.log(".on(", routeName, method, hooks, ")");
     let name = routeName;
     let isRegExp = false;
+    const keys = [];
     if(_.isRegExp(routeName)) {
-      name = routeName.toString();
       isRegExp = true;
+      name = routeName.toString();
+    } else {
+      // handle parameterized URL string
+      const remapped = name.split('/').map(item=>{
+        if(item.startsWith(":")) {
+          isRegExp = true;
+          keys.push(item.slice(1));
+          return '([^/]{1,})';
+        }
+        return item;
+      });
+      routeName = new RegExp(remapped.join('/'));
     }
     _routes[name] = {
+      name,
+      regExp:isRegExp ? routeName : null,
+      regExpKeys:keys,
       method,
-      hooks,
-      isRegExp
+      hooks
     }
     return this;   
   } 
   off(...args) {
-    console.log("off method", args)
-    const [routeName] = args;
+    if(DEBUG) { console.log(".off(", args, ")"); }
     if(args.length === 0) {
-      for(const [key, value] in _routes) {
-        delete _routes[key];
-      }
+      WebRouter.reset();
+      window.removeEventListener('popstate', locationChange.bind(this), false);
+      delete window.hasListenerAttached;
     } else {
+      const [routeName] = args;
       delete _routes[routeName];  
     }
     return this;
   }
   listen() {
-    document.addEventListener('popstate', locationChange);
+    if(!window.hasListenerAttached) {
+      if(DEBUG) console.log("listen() Attaching to window")
+      window.addEventListener('popstate', locationChange.bind(this), false);
+      window.hasListenerAttached = true;      
+    }
+    return this;
   }
-  updatePageLinks() {
+  /**
+    @param {function} callback (optional) used mostly for testing
+  */
+  updatePageLinks(callback=null) {
+    if(DEBUG) console.log('updatePageLinks', pageLinkNames);
     pageLinkNames.forEach(name=>{
       const links = document.querySelectorAll(name);
       _.each(links, el=>{
-        console.log("el",el);
         if(!el.hasListenerAttached) {
           el.addEventListener('click', (evt)=>{
-            console.log("CLICKED. Now navigate TBD", evt);
+            if(DEBUG) { 
+              console.log("CLICKED. Now navigate", evt); 
+            }
+            if((evt.ctrlKey || evt.metaKey) && evt.target.tagName.toLowerCase() === 'a') { 
+              return false; 
+            }
+            evt.preventDefault();
+            const href = evt.target.getAttribute('href');
+            if(!callback) {
+              this.navigate(href);
+            } else {
+              callback.call(this, href);  
+            }
           }, false);
         }
         el.hasListenerAttached = true;
       });
     });
+    return this;
   }
-  navigate(path, absolute) { 
+  /**
+    @param {string} path - the path to navigate
+    @param {object} data - an object to set for `state`
+  */
+  navigate(path, data=null) {
+    window.history.pushState(data, null, path);
+    this.resolve();
+    return this;
+  }
 
-  }
-  resolve(current=document.location.pathname) {
-    for([key, value] in _routes) {
-      console.log("added to routes", key, value)
+  /**
+    @param {string} current (optional) - default is current window.location.pathname. 
+  */
+  resolve(current=window.location.pathname) {
+    if(DEBUG) console.log('Resolve', current);
+    let wasMatched = false;
+    for(const key in _routes) {
+      const value = _routes[key];
+      if(!value.regExp) {
+        if(key === current) {
+          wasMatched = true;
+          lastResolved = value;
+          callBeforeAndMain(value, null);
+          callAfter(value, null);
+        }
+      } else if(value.regExp) {
+        let keyMatches = [];
+        const raw = {};
+        const matched = current.match(value.regExp) || [];
+        if(matched && matched.length) {
+          keyMatches = matched.slice(1, value.regExpKeys.length+1);
+          keyMatches.forEach((item, idx)=>{
+            const key = value.regExpKeys[idx];
+            raw[key] = item;
+          });          
+        }
+        const params = value.regExpKeys.length ? raw : matched.slice(1);
+        if(matched && matched.length) {
+          wasMatched = true;
+          lastResolved = value;
+          callBeforeAndMain(value, params);
+          callAfter(value, params);
+        }
+      }
     }
+    if(!wasMatched) {
+      lastResolved = null;
+    } else if(DEBUG) {
+      console.log('Route Matched', lastResolved);
+    }
+    return this;
   }
   get root() {
     return _root;
   }
+  get all() {
+    return _routes;
+  }   
   static set autoListen(value) {
     autoListen = !!(value);
   }
@@ -90,455 +260,21 @@ export class WebRouter {
   static get routes() {
     return _routes;
   }
-  get all() {
-    return _routes;
-  }  
+
+  static get lastResolved() {
+    return lastResolved;
+  }
+  static reset() {
+    _routes = {}
+  } 
   static set debug(value) {
     DEBUG = !!(value);
   }
+  /**
+    @param {array} items - additional selectors to use when calling `.updatePageLinks()`
+  */
+  static addPageLinkSelectors(items=[]) {
+    pageLinkNames.push(...items);
+    pageLinkNames = _.unique(pageLinkNames)
+  }
 }
-
-// function WebRouter(r, useHash, hash) {
-//   this.root = null;
-//   this._routes = [];
-//   this._useHash = useHash;
-//   this._hash = typeof hash === 'undefined' ? '#' : hash;
-//   this._paused = false;
-//   this._destroyed = false;
-//   this._lastRouteResolved = null;
-//   this._notFoundHandler = null;
-//   this._defaultHandler = null;
-//   this._usePushState = !useHash && isPushStateAvailable();
-//   this._onLocationChange = this._onLocationChange.bind(this);
-//   this._genericHooks = null;
-//   this._historyAPIUpdateMethod = 'pushState';
-
-//   if (r) {
-//     this.root = useHash ? r.replace(/\/$/, '/' + this._hash) : r.replace(/\/$/, '');
-//   } else if (useHash) {
-//     this.root = this._cLoc().split(this._hash)[0].replace(/\/$/, '/' + this._hash);
-//   }
-
-//   this._listen();
-//   this.updatePageLinks();
-// }
-
-// function clean(s) {
-//   if (s instanceof RegExp) return s;
-//   return s.replace(/\/+$/, '').replace(/^\/+/, '^/');
-// }
-
-// function regExpResultToParams(match, names) {
-//   if (names.length === 0) return null;
-//   if (!match) return null;
-//   return match
-//     .slice(1, match.length)
-//     .reduce((params, value, index) => {
-//       if (params === null) params = {};
-//       params[names[index]] = decodeURIComponent(value);
-//       return params;
-//     }, null);
-// }
-
-// function replaceDynamicURLParts(route) {
-//   var paramNames = [], regexp;
-
-//   if (route instanceof RegExp) {
-//     regexp = route;
-//   } else {
-//     regexp = new RegExp(
-//       route.replace(WebRouter.PARAMETER_REGEXP, function (full, dots, name) {
-//         paramNames.push(name);
-//         return WebRouter.REPLACE_VARIABLE_REGEXP;
-//       })
-//         .replace(WebRouter.WILDCARD_REGEXP, WebRouter.REPLACE_WILDCARD) + WebRouter.FOLLOWED_BY_SLASH_REGEXP
-//       , WebRouter.MATCH_REGEXP_FLAGS);
-//   }
-//   return { regexp, paramNames };
-// }
-
-// function getUrlDepth(url) {
-//   return url.replace(/\/$/, '').split('/').length;
-// }
-
-// function compareUrlDepth(urlA, urlB) {
-//   return getUrlDepth(urlB) - getUrlDepth(urlA);
-// }
-
-// function findMatchedRoutes(url, routes = []) {
-//   return routes
-//     .map(route => {
-//       var { regexp, paramNames } = replaceDynamicURLParts(clean(route.route));
-//       var match = url.replace(/^\/+/, '/').match(regexp);
-//       var params = regExpResultToParams(match, paramNames);
-
-//       return match ? { match, route, params } : false;
-//     })
-//     .filter(m => m);
-// }
-
-// function match(url, routes) {
-//   return findMatchedRoutes(url, routes)[0] || false;
-// }
-
-// function root(url, routes) {
-//   var matched = routes.map(
-//     route => route.route === '' || route.route === '*' ? url : url.split(new RegExp(route.route + '($|\/)'))[0]
-//   );
-//   var fallbackURL = clean(url);
-
-//   if (matched.length > 1) {
-//     return matched.reduce((result, url) => {
-//       if (result.length > url.length) result = url;
-//       return result;
-//     }, matched[0]);
-//   } else if (matched.length === 1) {
-//     return matched[0];
-//   }
-//   return fallbackURL;
-// }
-
-// function isHashChangeAPIAvailable() {
-//   return typeof window !== 'undefined' && 'onhashchange' in window;
-// }
-
-// function extractGETParameters(url) {
-//   return url.split(/\?(.*)?$/).slice(1).join('');
-// }
-
-// function getOnlyURL(url, useHash, hash) {
-//   var onlyURL = url, split;
-//   var cleanGETParam = str => str.split(/\?(.*)?$/)[0];
-
-//   if (typeof hash === 'undefined') {
-//     // To preserve BC
-//     hash = '#';
-//   }
-
-//   if (isPushStateAvailable() && !useHash) {
-//     onlyURL = cleanGETParam(url).split(hash)[0];
-//   } else {
-//     split = url.split(hash);
-//     onlyURL = split.length > 1 ? cleanGETParam(split[1]) : cleanGETParam(split[0]);
-//   }
-
-//   return onlyURL;
-// }
-
-// function manageHooks(handler, hooks, params) {
-//   if (hooks && typeof hooks === 'object') {
-//     if (hooks.before) {
-//       hooks.before((shouldRoute = true) => {
-//         if (!shouldRoute) return;
-//         handler();
-//         hooks.after && hooks.after(params);
-//       }, params);
-//       return;
-//     } else if (hooks.after) {
-//       handler();
-//       hooks.after && hooks.after(params);
-//       return;
-//     }
-//   }
-//   handler();
-// }
-
-// function isHashedRoot(url, useHash, hash) {
-//   if (isPushStateAvailable() && !useHash) {
-//     return false;
-//   }
-
-//   if (!url.match(hash)) {
-//     return false;
-//   }
-
-//   let split = url.split(hash);
-
-//   return split.length < 2 || split[1] === '';
-// }
-
-
-// WebRouter.prototype = {
-//   helpers: {
-//     match,
-//     root,
-//     clean,
-//     getOnlyURL
-//   },
-//   navigate: function (path, absolute) {
-//     var to;
-
-//     path = path || '';
-//     if (this._usePushState) {
-//       to = (!absolute ? this._getRoot() + '/' : '') + path.replace(/^\/+/, '/');
-//       to = to.replace(/([^:])(\/{2,})/g, '$1/');
-//       history[this._historyAPIUpdateMethod]({}, '', to);
-//       this.resolve();
-//     } else if (typeof window !== 'undefined') {
-//       path = path.replace(new RegExp('^' + this._hash), '');
-//       window.location.href =
-//         window.location.href
-//           .replace(/#$/, '')
-//           .replace(new RegExp(this._hash + '.*$'), '') + this._hash + path;
-//     }
-//     return this;
-//   },
-//   on: function (...args) {
-//     if (typeof args[0] === 'function') {
-//       this._defaultHandler = { handler: args[0], hooks: args[1] };
-//     } else if (args.length >= 2) {
-//       if (args[0] === '/') {
-//         let func = args[1];
-
-//         if (typeof args[1] === 'object') {
-//           func = args[1].uses;
-//         }
-
-//         this._defaultHandler = { handler: func, hooks: args[2] };
-//       } else {
-//         this._add(args[0], args[1], args[2]);
-//       }
-//     } else if (typeof args[0] === 'object') {
-//       let orderedRoutes = Object.keys(args[0]).sort(compareUrlDepth);
-
-//       orderedRoutes.forEach(route => {
-//         this.on(route, args[0][route]);
-//       });
-//     }
-//     return this;
-//   },
-//   off: function (handler) {
-//     if (this._defaultHandler !== null && handler === this._defaultHandler.handler) {
-//       this._defaultHandler = null;
-//     } else if (this._notFoundHandler !== null && handler === this._notFoundHandler.handler) {
-//       this._notFoundHandler = null;
-//     }
-//     this._routes = this._routes.reduce((result, r) => {
-//       if (r.handler !== handler) result.push(r);
-//       return result;
-//     }, []);
-//     return this;
-//   },
-//   notFound: function (handler, hooks) {
-//     this._notFoundHandler = { handler, hooks: hooks };
-//     return this;
-//   },
-//   resolve: function (current) {
-//     var handler, m;
-//     var url = (current || this._cLoc()).replace(this._getRoot(), '');
-
-//     if (this._useHash) {
-//       url = url.replace(new RegExp('^\/' + this._hash), '/');
-//     }
-
-//     let GETParameters = extractGETParameters(current || this._cLoc());
-//     let onlyURL = getOnlyURL(url, this._useHash, this._hash);
-
-//     if (this._paused) return false;
-
-//     if (
-//       this._lastRouteResolved &&
-//         onlyURL === this._lastRouteResolved.url &&
-//         GETParameters === this._lastRouteResolved.query
-//     ) {
-//       if (this._lastRouteResolved.hooks && this._lastRouteResolved.hooks.already) {
-//         this._lastRouteResolved.hooks.already(this._lastRouteResolved.params);
-//       }
-//       return false;
-//     }
-
-//     m = match(onlyURL, this._routes);
-
-//     if (m) {
-//       this._callLeave();
-//       this._lastRouteResolved = {
-//         url: onlyURL,
-//         query: GETParameters,
-//         hooks: m.route.hooks,
-//         params: m.params,
-//         name: m.route.name
-//       };
-//       handler = m.route.handler;
-//       manageHooks(() => {
-//         manageHooks(() => {
-//           m.route.route instanceof RegExp ?
-//             handler(...(m.match.slice(1, m.match.length))) :
-//             handler(m.params, GETParameters);
-//         }, m.route.hooks, m.params, this._genericHooks);
-//       }, this._genericHooks, m.params);
-//       return m;
-//     } else if (this._defaultHandler && (
-//       onlyURL === '' ||
-//         onlyURL === '/' ||
-//         onlyURL === this._hash ||
-//         isHashedRoot(onlyURL, this._useHash, this._hash)
-//     )) {
-//       manageHooks(() => {
-//         manageHooks(() => {
-//           this._callLeave();
-//           this._lastRouteResolved = { url: onlyURL, query: GETParameters, hooks: this._defaultHandler.hooks };
-//           this._defaultHandler.handler(GETParameters);
-//         }, this._defaultHandler.hooks);
-//       }, this._genericHooks);
-//       return true;
-//     } else if (this._notFoundHandler) {
-//       manageHooks(() => {
-//         manageHooks(() => {
-//           this._callLeave();
-//           this._lastRouteResolved = { url: onlyURL, query: GETParameters, hooks: this._notFoundHandler.hooks };
-//           this._notFoundHandler.handler(GETParameters);
-//         }, this._notFoundHandler.hooks);
-//       }, this._genericHooks);
-//     }
-//     return false;
-//   },
-//   destroy: function () {
-//     this._routes = [];
-//     this._destroyed = true;
-//     this._lastRouteResolved = null;
-//     this._genericHooks = null;
-//     clearTimeout(this._listeningInterval);
-//     if (typeof window !== 'undefined') {
-//       window.removeEventListener('popstate', this._onLocationChange);
-//       window.removeEventListener('hashchange', this._onLocationChange);
-//     }
-//   },
-//   updatePageLinks: function () {
-//     var self = this;
-
-//     if (typeof document === 'undefined') return;
-
-//     this._findLinks().forEach(link => {
-//       if (!link.hasListenerAttached) {
-//         link.addEventListener('click', function (e) {
-//           if((e.ctrlKey || e.metaKey) && e.target.tagName.toLowerCase() == 'a'){ return false; }
-//           var location = self.getLinkPath(link);
-
-//           if (!self._destroyed) {
-//             e.preventDefault();
-//             self.navigate(location.replace(/\/+$/, '').replace(/^\/+/, '/'));
-//           }
-//         });
-//         link.hasListenerAttached = true;
-//       }
-//     });
-//   },
-//   generate: function (name, data = {}) {
-//     var result = this._routes.reduce((result, route) => {
-//       var key;
-
-//       if (route.name === name) {
-//         result = route.route;
-//         for (key in data) {
-//           result = result.toString().replace(':' + key, data[key]);
-//         }
-//       }
-//       return result;
-//     }, '');
-
-//     return this._useHash ? this._hash + result : result;
-//   },
-//   link: function (path) {
-//     return this._getRoot() + path;
-//   },
-//   pause: function (status = true) {
-//     this._paused = status;
-//     if (status) {
-//       this._historyAPIUpdateMethod = 'replaceState';
-//     } else {
-//       this._historyAPIUpdateMethod = 'pushState';
-//     }
-//   },
-//   resume: function () {
-//     this.pause(false);
-//   },
-//   historyAPIUpdateMethod: function (value) {
-//     if (typeof value === 'undefined') return this._historyAPIUpdateMethod;
-//     this._historyAPIUpdateMethod = value;
-//     return value;
-//   },
-//   disableIfAPINotAvailable: function () {
-//     if (!isPushStateAvailable()) {
-//       this.destroy();
-//     }
-//   },
-//   lastRouteResolved() {
-//     return this._lastRouteResolved;
-//   },
-//   getLinkPath(link) {
-//     return link.getAttribute('href');
-//   },
-//   hooks(hooks) {
-//     this._genericHooks = hooks;
-//   },
-//   _add: function (route, handler = null, hooks = null) {
-//     if (typeof route === 'string') {
-//       route = encodeURI(route);
-//     }
-//     this._routes.push(
-//       typeof handler === 'object' ? {
-//         route,
-//         handler: handler.uses,
-//         name: handler.as,
-//         hooks: hooks || handler.hooks
-//       } : { route, handler, hooks: hooks }
-//     );
-
-//     return this._add;
-//   },
-//   _getRoot: function () {
-//     if (this.root !== null) return this.root;
-//     this.root = root(this._cLoc().split('?')[0], this._routes);
-//     return this.root;
-//   },
-//   _listen: function () {
-//     if (this._usePushState) {
-//       window.addEventListener('popstate', this._onLocationChange);
-//     } else if (isHashChangeAPIAvailable()) {
-//       window.addEventListener('hashchange', this._onLocationChange);
-//     } else {
-//       let cached = this._cLoc(), current, check;
-
-//       check = () => {
-//         current = this._cLoc();
-//         if (cached !== current) {
-//           cached = current;
-//           this.resolve();
-//         }
-//         this._listeningInterval = setTimeout(check, 200);
-//       };
-//       check();
-//     }
-//   },
-//   _cLoc: function () {
-//     if (typeof window !== 'undefined') {
-//       if (typeof window.__NAVIGO_WINDOW_LOCATION_MOCK__ !== 'undefined') {
-//         return window.__NAVIGO_WINDOW_LOCATION_MOCK__;
-//       }
-//       return clean(window.location.href);
-//     }
-//     return '';
-//   },
-//   _findLinks: function () {
-//     return [].slice.call(document.querySelectorAll('[data-navigo]'));
-//   },
-//   _onLocationChange: function () {
-//     this.resolve();
-//   },
-//   _callLeave() {
-//     const lastRouteResolved = this._lastRouteResolved;
-
-//     if (lastRouteResolved && lastRouteResolved.hooks && lastRouteResolved.hooks.leave) {
-//       lastRouteResolved.hooks.leave(lastRouteResolved.params);
-//     }
-//   }
-// };
-
-// WebRouter.PARAMETER_REGEXP = /([:*])(\w+)/g;
-// WebRouter.WILDCARD_REGEXP = /\*/g;
-// WebRouter.REPLACE_VARIABLE_REGEXP = '([^\/]+)';
-// WebRouter.REPLACE_WILDCARD = '(?:.*)';
-// WebRouter.FOLLOWED_BY_SLASH_REGEXP = '(?:\/$|$)';
-// WebRouter.MATCH_REGEXP_FLAGS = '';
-
-// export WebRouter;

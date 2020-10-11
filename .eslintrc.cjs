@@ -4,13 +4,9 @@ module.exports = {
         "es2021": true
     },
     extends: [
-        'plugin:react/recommended',
         'semistandard'
     ],
     settings:{
-        react:{
-            version:'detect'
-        }
     },    
     "parserOptions": {
         "ecmaFeatures": {
@@ -20,15 +16,16 @@ module.exports = {
         "sourceType": "module"
     },
     "globals":{
+        beforeAll:true,
+        afterAll:true,
+        afterEach:true,
         page: true,
         browser: true,
         context: true,        
-        "_": 'readonly',
-        "jestPuppeteer": true,
+        "_": 'readonly'
     },
-    "plugins": [
-        "react"
-    ],
     "rules": {
+        "id-length": ["error", { "min": 2 }],
+        "multiline-ternary": ["error", "never"]
     }
 };
