@@ -205,6 +205,7 @@ export class WebRouter {
     if(_.isFunction(handler)) {
       notFoundHandler = handler;  
     }
+    return this;
   }
   /**
     @param {string} current (optional) - default is current window.location.pathname. 

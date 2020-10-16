@@ -32,10 +32,12 @@ describe('WebRouter Basic', () => {
     expect(_.isFunction(WebRouter.setRoot)).toBeTruthy();
     expect(WebRouter.root).toBe('/');
   });
-  it('can chain on and resolve', () => {
+  it('can chain notFound, on and resolve', () => {
     const router = new WebRouter();
     expect.assertions(1);
-    router.on('/f001', () => {
+    router.notFound(()=>{
+      expect(false).toBeTruthy();
+    }).on('/f001', () => {
       expect(true).toBeTruthy();
     }).on('/f002').resolve('/f001');
   });
