@@ -28,6 +28,7 @@ describe('WebRouter Basic', () => {
     expect(_.isFunction(router.updatePageLinks)).toBeTruthy();
     expect(_.isFunction(router.resolve)).toBeTruthy();
     expect(_.isFunction(router.navigate)).toBeTruthy();
+    expect(_.isFunction(router.notFound)).toBeTruthy();
     expect(_.isFunction(WebRouter.setRoot)).toBeTruthy();
     expect(WebRouter.root).toBe('/');
   });
@@ -37,6 +38,17 @@ describe('WebRouter Basic', () => {
     router.on('/f001', () => {
       expect(true).toBeTruthy();
     }).on('/f002').resolve('/f001');
+  });
+  it('can handle not found with handler', ()=>{
+    expect.assertions(1);
+    const router = new WebRouter();
+    expect.assertions(1);
+    router.notFound(()=>{
+      expect(true).toBeTruthy();
+    })
+    router.on('/f001', () => {
+      expect(true).toBeTruthy();
+    }).on('/not-found').resolve('/f001');
   });
 });
 

@@ -12,6 +12,7 @@ let DEBUG = false;
 let autoListen = true;
 let lastResolved = null;
 let pageLinkNames = ['[data-navigo]', '[data-route]'];
+let notFoundHandler = null;
 /**
   @param {array} items - an array of functions to recursively call
   @param {object} params
@@ -200,6 +201,11 @@ export class WebRouter {
     return this;
   }
 
+  notFound(handler) {
+    if(_.isFunction(handler)) {
+      notFoundHandler = handler;  
+    }
+  }
   /**
     @param {string} current (optional) - default is current window.location.pathname. 
   */
@@ -237,6 +243,9 @@ export class WebRouter {
     }
     if(!wasMatched) {
       lastResolved = null;
+      if(notFoundHandler) {
+        notFoundHandler.call(this);
+      }
     } else if(DEBUG) {
       console.log('Route Matched', lastResolved);
     }
