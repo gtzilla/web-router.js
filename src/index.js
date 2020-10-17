@@ -130,7 +130,7 @@ export class WebRouter {
         }
         return item;
       });
-      routeName = new RegExp(remapped.join('/'));
+      routeName = new RegExp('^' + remapped.join('/') + '$');
     }
     _routes[name] = {
       name,
@@ -231,7 +231,8 @@ export class WebRouter {
           keyMatches.forEach((item, idx)=>{
             const key = value.regExpKeys[idx];
             raw[key] = item;
-          });          
+          });  
+          console.log("keyMatches",keyMatches, matched, key, current)        
         }
         const params = value.regExpKeys.length ? raw : matched.slice(1);
         if(matched && matched.length) {

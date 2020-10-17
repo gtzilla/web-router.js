@@ -128,6 +128,40 @@ describe('WebRouter `.off()`', () => {
   });
 });
 
+/**
+  if parameterized URL patterns are 
+    /:pattern/:date
+    /:pattern
+
+  And route is
+  /66,55,55,55,55/2020-10-20
+
+  Should not be matching /pattern
+*/
+describe('parameterized URL', ()=>{
+  it('is not greedy', ()=>{
+    const router = new WebRouter;
+    expect.assertions(2);
+    router.on('/:pattern', ({pattern})=>{
+      expect(true).toBeTruthy()
+    }).on('/:pattern/:date', ({pattern, date})=>{
+      expect(pattern).toEqual('66,55,55,55,55');
+      expect(date).toEqual('2020-10-17');
+    }).resolve('/66,55,55,55,55/2020-10-17');
+  });
+
+  it('is not greedy, reverse declaration', ()=>{
+    const router = new WebRouter;
+    expect.assertions(2);
+    router.on('/:pattern/:date', ({pattern, date})=>{
+      expect(pattern).toEqual('66,55,55,55,55');
+      expect(date).toEqual('2020-10-17');
+    }).on('/:pattern', ({pattern})=>{
+      expect(true).toBeTruthy()
+    }).resolve('/66,55,55,55,55/2020-10-17');
+  });  
+})
+
 describe('WebRouter .navigate() adds to history length', () => {
   /**
     This tests relies on there only
