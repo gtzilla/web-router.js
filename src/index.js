@@ -219,7 +219,7 @@ export class WebRouter {
         if(key === current) {
           wasMatched = true;
           lastResolved = value;
-          callBeforeAndMain(value, null);
+          callBeforeAndMain(value, {});
           callAfter(value, null);
         }
       } else if(value.regExp) {
@@ -245,6 +245,7 @@ export class WebRouter {
     if(!wasMatched) {
       lastResolved = null;
       if(notFoundHandler) {
+        if(DEBUG) console.log("notFound");
         notFoundHandler.call(this);
       }
     } else if(DEBUG) {
