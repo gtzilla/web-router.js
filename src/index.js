@@ -231,8 +231,7 @@ export class WebRouter {
           keyMatches.forEach((item, idx)=>{
             const key = value.regExpKeys[idx];
             raw[key] = item;
-          });  
-          console.log("keyMatches",keyMatches, matched, key, current)        
+          });
         }
         const params = value.regExpKeys.length ? raw : matched.slice(1);
         if(matched && matched.length) {
