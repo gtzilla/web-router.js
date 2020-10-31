@@ -73,7 +73,7 @@ route.off('/somepage/:myParam');
 
 ## `.navigate( url )` Method
 
-You can force a navigation from JavaScript by using the `router.navigate` method.
+You can initiate a navigation from JavaScript by using the `router.navigate` method. The `navigate` method can accept an optional second parameter, which will be passed to `pushState`. 
 
 ## `.resolve( path )` Method
 

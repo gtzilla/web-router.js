@@ -220,6 +220,40 @@ describe('WebRouter .resolve() routes', () => {
   });
 });
 
+describe('leave hook', ()=>{
+  /**
+    https://stackoverflow.com/questions/57614973/testing-popstate-event-with-jest
+    works ok, could be better
+  */
+  const mockAddEventListener = jest.fn();  
+  const orig = window.addEventListener;
+  beforeAll(()=>{
+    window.addEventListener = mockAddEventListener;
+  });  
+  afterAll(()=>{
+    window.addEventListener = orig;
+  });
+  it('can trigger leave', testDone=>{
+    expect.assertions(5);
+    const router = new WebRouter();
+    router.on('/foo321', ()=>{
+      expect(true).toBeTruthy();
+    }, {
+      leave:(done, evt)=>{
+        expect(evt).toBeDefined();
+        expect(evt.state).toBeDefined();
+        expect(evt.state.foo).toBeTruthy();
+        testDone();
+      }
+    }).resolve('/foo321');
+    expect(mockAddEventListener.mock.calls[0][0]).toBe('popstate');
+    const state = {foo:true}
+    mockAddEventListener.mock.calls[0][1]({state});     
+    router.navigate('/bar321', state);
+    delete window.addEventListener
+  });
+});
+
 describe('WebRouter after hook', () => {
   beforeAll(() => {
     delete window.location.pathname;
@@ -477,6 +511,65 @@ describe('WebRouter transforms /foo/:someValue/:anotherValue', () => {
     router.resolve();
   });
 });
+
+describe('Example code, Readme, declaration', ()=>{
+  beforeAll(() => {
+    delete window.location.pathname;
+    window.location.pathname = '/some/url';
+  });
+  afterEach(() => {
+    const router = new WebRouter();
+    router.off();
+  });  
+  it('can be simply declared with routes', ()=>{
+    expect.assertions(1);
+    new WebRouter(null, {
+    '/some/url':()=>{ 
+      expect(true).toBeTruthy();
+    }
+    }).resolve();    
+  });
+});
+
+describe('Example code, Readme, chaining', ()=>{
+  it('can be chained', testDone=>{
+    expect.assertions(4);
+    const urlFragment = 'anything_is_here';
+    const router = new WebRouter();
+    expect(router).toBeDefined();
+    router.on(/^\/foo1\/([^/]{1,})$/, (arg1)=>{
+      // Do main rendering...
+      expect(arg1).toEqual('anything_is_here');
+      testDone();
+    }, {
+      before:[(done,params)=>{
+        // ...
+        expect(true).toBeTruthy();
+        done();
+      },(done, params)=>{
+        // ...
+        expect(true).toBeTruthy();
+        done();
+        
+      }]
+    }).on('/foo2', ()=>{
+      // Do main rendering...
+      expect(true).toBeTruthy();
+    }, {
+      after:[(done,params)=>{
+        // not called
+        expect(true).toBeTruthy();
+        done();
+      },(done, params)=>{
+        // not called
+        expect(true).toBeTruthy();
+        done();
+      }]
+    }).resolve('/foo1/' + urlFragment);
+  });
+})
+
+
 
 describe('WebRouter transforms colon prefix into RegExp', () => {
   beforeAll(() => {

@@ -85,7 +85,7 @@ function callLeave(info, params=null, callback=(allow)=>{}) {
 function locationChange(evt) {
   if(lastResolved) {
     if(DEBUG) console.log("was a last resolve", lastResolved);
-    callLeave(lastResolved, null);
+    callLeave(lastResolved, evt);
   }
   this.resolve();
   return this;
