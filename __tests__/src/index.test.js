@@ -6,9 +6,12 @@ import { WebRouter } from '../../src/index.js';
 import _ from 'underscore';
 
 afterEach(() => {
-  const router = new WebRouter();
-  router.off();
+  // const router = new WebRouter();
+  // router.off();
+  WebRouter.reset();
 });
+
+
 
 describe('WebRouter Basic', () => {
   beforeAll(async () => {
@@ -322,7 +325,7 @@ describe('WebRouter before hook method', () => {
     let count = false;
     expect.assertions(2);
     const router = new WebRouter();
-    router.on(/\/foo([1-9]{1})/, () => {
+    router.on(/^\/foo([1-9]{1})/, () => {
       expect(count).toEqual(true);
     }, {
       before: (done, params) => {
@@ -402,7 +405,7 @@ describe('RegExp Route Matching', () => {
   it('matches basic regexp', () => {
     const router = new WebRouter();
     expect.assertions(2);
-    router.on(/\/(foo)\/([a-z]{1,})\/plain/, (arg1, arg2) => {
+    router.on(/^\/(foo)\/([a-z]{1,})\/plain$/, (arg1, arg2) => {
       expect(arg1).toEqual('foo');
       expect(arg2).toEqual('america');
     });
@@ -424,11 +427,11 @@ describe('RegExp Route Matching', () => {
   it("isn't greedy", () => {
     expect.assertions(2);
     const router = new WebRouter();
-    router.on(/\/foo\/(bar|car)\/(bat)\/([^/]{1,})/, (arg1, arg2) => {
+    router.on(/\/foo\/(bar|car)\/(bat)\/([^/]{1,})$/, (arg1, arg2) => {
       expect(arg1).toEqual('bar');
       expect(arg2).toEqual('bat');
     });
-    router.on(/\/foo\/(bar|car)\/(bat)\/([^/]{1,})\/plain/, (arg1, arg2, arg3) => {
+    router.on(/^\/foo\/(bar|car)\/(bat)\/([^/]{1,})\/plain$/, (arg1, arg2, arg3) => {
       expect(true).toBeTruthy();
       expect(arg1).toEqual('bar');
       expect(arg2).toEqual('bat');
@@ -444,7 +447,7 @@ describe('RegExp Route Matching', () => {
       expect(arg1).toEqual('bat');
       expect(arg2).toEqual('c');
     });
-    router.on(/\/(bar|bat)\/normal\/([a-z]{1})\/normal\/plain/, (arg1, arg2) => {
+    router.on(/^\/(bar|bat)\/normal\/([a-z]{1})\/normal\/plain$/, (arg1, arg2) => {
       expect(arg1).toEqual('bat');
       expect(arg2).toEqual('c');
     });

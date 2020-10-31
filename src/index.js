@@ -6,12 +6,13 @@
 
 import _ from 'underscore';
 
-let _root;
+let _root = null;
 let _routes = {};
 let DEBUG = false;
 let autoListen = true;
 let lastResolved = null;
-let pageLinkNames = ['[data-navigo]', '[data-route]'];
+const pageLinkDefaultNames = ['[data-navigo]', '[data-route]']
+let pageLinkNames = pageLinkDefaultNames.slice(0);
 let notFoundHandler = null;
 /**
   @param {array} items - an array of functions to recursively call
@@ -111,6 +112,8 @@ export class WebRouter {
     @param {string|RegExp} routeName
     @param {function} method
     @param {object} hooks of format {before, after, leave}
+
+    @return {WebRouter}
   */
   on(routeName, method, hooks={}) {
     if(DEBUG) console.log(".on(", routeName, method, hooks, ")");
@@ -141,6 +144,9 @@ export class WebRouter {
     }
     return this;   
   } 
+  /**
+    @return {WebRouter}
+  */
   off(...args) {
     if(DEBUG) { console.log(".off(", args, ")"); }
     if(args.length === 0) {
@@ -153,6 +159,9 @@ export class WebRouter {
     }
     return this;
   }
+  /**
+    @return {WebRouter}
+  */  
   listen() {
     if(!window.hasListenerAttached) {
       if(DEBUG) console.log("listen() Attaching to window")
@@ -163,6 +172,8 @@ export class WebRouter {
   }
   /**
     @param {function} callback (optional) used mostly for testing
+
+    @return {WebRouter}
   */
   updatePageLinks(callback=null) {
     if(DEBUG) console.log('updatePageLinks', pageLinkNames);
@@ -194,6 +205,8 @@ export class WebRouter {
   /**
     @param {string} path - the path to navigate
     @param {object} data - an object to set for `state`
+
+    @return {WebRouter}
   */
   navigate(path, data=null) {
     window.history.pushState(data, null, path);
@@ -209,6 +222,8 @@ export class WebRouter {
   }
   /**
     @param {string} current (optional) - default is current window.location.pathname. 
+
+    @return {WebRouter}
   */
   resolve(current=window.location.pathname) {
     if(DEBUG) console.log('Resolve', current);
@@ -256,6 +271,10 @@ export class WebRouter {
   get root() {
     return _root;
   }
+
+  /**
+    @return {object}
+  */
   get all() {
     return _routes;
   }   
@@ -271,12 +290,19 @@ export class WebRouter {
   static get routes() {
     return _routes;
   }
-
+  /**
+    @return {string}
+  */
   static get lastResolved() {
     return lastResolved;
   }
   static reset() {
     _routes = {}
+    _root = null;
+    autoListen = true;
+    lastResolved = null;
+    notFoundHandler = null;
+    pageLinkNames = pageLinkDefaultNames.slice(0);
   } 
   static set debug(value) {
     DEBUG = !!(value);

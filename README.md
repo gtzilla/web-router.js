@@ -149,6 +149,35 @@ route.on('/', ()=>{}, {
     // can terminate chain by done(false) 
     done();
   }]
+});
+```
+
+Hooks can be used together or as needed. For instance, if you wanted to call 5 methods before a route is invoked, but do not need to use `after` or leave, that's possible. For instanc presume we want to see if a user has a token, get the credentials is a user has said token that's simple
+
+```javascript
+router.on('/user', ()=>{
+  const div = document.createElement('div')
+  div.innerText = localStorage.getItem('user')
+  document.body.appendChild(div);
+}, {
+  before:[(done, params)=>{
+    const token = localStorage.getItem('token');
+    if(!token) done(false);
+    done();
+  }, (done, params)=>{
+    /**
+      Assumes API response is
+      {user:'your name'}
+    */
+    fetch('/v3/user')
+      .then(data=>data.json())
+      .then(data=>{
+        localStorage.setItem('user', user.name);
+        done();
+      }).catch(err=>{
+        done(false);
+      })
+  }];
 })
 ```
 
@@ -163,7 +192,7 @@ Please note, while this will not apply to most users, it's worth nothing that th
 
 ```javascript
 const router = new WebRouter();
-router.on(/\/foo1\/([^/]{1,})/, (arg1)=>{
+router.on(/^\/foo1\/([^/]{1,})$/, (arg1)=>{
   // Do main rendering...
 }, {
   before:[(done,params)=>{
