@@ -21,6 +21,7 @@ beforeAll(() => {
 describe('WebRouter Basic', () => {
   it('Can be imported', () => {
     expect(WebRouter).toBeTruthy();
+    expect(WebRouter).toBeDefined();
   });
   it('Public API Methods', () => {
     const router = new WebRouter('/', null);
@@ -74,6 +75,21 @@ describe('WebRouter `.on()`', () => {
     expect(_.isFunction(found.method)).toBeTruthy();
     expect(found.method()).toBeTruthy();
     expect(foundNotTrue.method()).toBeFalsy();
+  });
+});
+
+describe('WebRouter multi resolved', () => {
+  it('can be resolved more than once', () => {
+    expect.assertions(4);
+    const router = new WebRouter();
+    router.on('/abc123', () => {
+      expect(true).toBeTruthy();
+    }).on('/abc/123/:xyz', ({ xyz }) => {
+      expect(true).toBeTruthy();
+      expect(xyz).toEqual('happy');
+    }).resolve('/abc123');
+    router.resolve('/abc/123/happy');
+    router.resolve('/abc123');
   });
 });
 
@@ -449,7 +465,7 @@ describe('WebRouter transforms /foo/:someValue/:anotherValue', () => {
   });
 });
 
-describe('Example code, Readme, declaration', () => {
+describe('Example code, README, declaration', () => {
   beforeAll(() => {
     delete window.location.pathname;
     window.location.pathname = '/some/url';
@@ -462,6 +478,64 @@ describe('Example code, Readme, declaration', () => {
       }
     }).resolve();
   });
+
+  it('resolves correctly .off() single route disable', () => {
+    const paramValue = 'working';
+    const route = new WebRouter();
+    expect.assertions(1);
+    route.on('/somepage/:myParam', ({ myParam }) => {
+      // ... rendering
+      expect(myParam).toEqual(paramValue);
+    }).on('/anotherpage/:myParam', ({ myParam }) => {
+      expect(myParam).toEqual(paramValue);
+    });
+    // disable that route
+    route.off('/somepage/:myParam');
+    route.resolve(`/anotherpage/${paramValue}`);
+  });
+
+  it('resolves .on() handler regexp', () => {
+    expect.assertions(7);
+    const route1Arg1 = 'bar';
+    const route1Arg2 = 'abcDEFABCXYZ0123456789';
+    const route2Arg1 = 'a9s058cjdjsjc94ns53512ncx3-shx8wncie.0djdmn,kjdjd';
+    const urlUserName = 'WebRouter';
+    const urlFailedUserName = 'failed';
+    const router = new WebRouter();
+    router.on(/myapp\/(bar|car)\/([A-Za-z0-9]{10,})/, (arg1, arg2) => {
+      expect(arg1).toEqual(route1Arg1);
+      expect(arg2).toEqual(route1Arg2);
+    });
+    router.on(/myapp\/search\/([^/]{1,})/, (searchPhrase) => {
+      // Render app
+      expect(searchPhrase).toEqual(route2Arg1);
+    }, {
+      before: (done, params) => {
+        // must call done. pass `false` to terminate
+        expect(_.isFunction(done)).toBeTruthy();
+        done();
+      }
+    });
+    router.on('/profile/:userName', ({ userName }) => {
+      // only called when URL is /profile/WebRouter
+      // based on before
+      expect(userName).toEqual(urlUserName);
+    }, {
+      before: (done, { userName }) => {
+        if (userName === 'WebRouter') {
+          expect(userName).toEqual(urlUserName);
+          done();
+        } else {
+          expect(userName).toEqual(urlFailedUserName);
+          done(false);
+        }
+      }
+    });
+    router.resolve(`/myapp/${route1Arg1}/${route1Arg2}`);
+    router.resolve(`/myapp/search/${route2Arg1}`);
+    router.resolve(`/profile/${urlUserName}`);
+    router.resolve(`/profile/${urlFailedUserName}`);
+  });
 });
 
 describe('Example code, Readme, chaining', () => {
@@ -472,7 +546,7 @@ describe('Example code, Readme, chaining', () => {
     expect(router).toBeDefined();
     router.on(/^\/foo1\/([^/]{1,})$/, (arg1) => {
       // Do main rendering...
-      expect(arg1).toEqual('anything_is_here');
+      expect(arg1).toEqual(urlFragment);
       testDone();
     }, {
       before: [(done, params) => {

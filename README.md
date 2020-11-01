@@ -33,7 +33,7 @@ const router = new WebRouter();
 router.on(/myapp\/(bar|car)\/([A-Za-z0-9]{10,})/, (arg1, arg2)=>{
   console.log('Page loaded', arg1, arg2);
 })
-router.on(/myapp\/search\/([^/])/, (searchPhrase)=>{
+router.on(/myapp\/search\/([^/]{1,})/, (searchPhrase)=>{
   // Render app
 }, {
   before:(done, params)=>{
@@ -53,7 +53,7 @@ router.on('/profile/:userName', ({userName})=>{
     }
     
   }
-})
+});
 router.resolve();
 
 ```
@@ -68,6 +68,10 @@ Omitting all arguments will delete all routes from the router. To remove individ
 
 ```javascript
 const route = new WebRouter();
+route.on('/somepage/:myParam', ()=>{
+  // ... rendering
+});
+// disable that route
 route.off('/somepage/:myParam');
 ```
 
