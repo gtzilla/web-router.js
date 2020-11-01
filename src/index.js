@@ -253,20 +253,19 @@ export class WebRouter {
           callAfter(value, null);
         }
       } else if(value.regExp) {
-        let keyMatches = [];
-        const raw = {};
         const matched = current.match(value.regExp) || [];
+        const keyMatches = matched.slice(1, value.regExpKeys.length+1);
+        const raw = {};
         if(matched && matched.length) {
-          keyMatches = matched.slice(1, value.regExpKeys.length+1);
           keyMatches.forEach((item, idx)=>{
             const key = value.regExpKeys[idx];
             raw[key] = item;
           });
           const params = value.regExpKeys.length ? raw : matched.slice(1);
           wasMatched = true;
-          lastResolved = value;          
+          lastResolved = value;
           callBeforeAndMain(value, params);
-          callAfter(value, params);          
+          callAfter(value, params);
         }
       }
     }
