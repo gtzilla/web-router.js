@@ -71,9 +71,9 @@ const route = new WebRouter();
 route.off('/somepage/:myParam');
 ```
 
-## `.navigate( url )` Method
+## `.navigate( url, [data] )` Method
 
-You can initiate a navigation from JavaScript by using the `router.navigate` method. The `navigate` method can accept an optional second parameter, which will be passed to `pushState`. 
+You can initiate a navigation from JavaScript by using the `router.navigate` method. The `navigate` method can accept an optional second parameter, which will be passed to `pushState` and available via `event.state`. 
 
 ## `.resolve( path )` Method
 
@@ -98,7 +98,7 @@ Identical to navigo, `WebRouter` supports integration with existing links using 
 ```
 
 ```javascript
-new WebRouter(null, {
+new WebRouter({
 '/some/url':()=>{ /* ... */ } 
 }).resolve();
 ```
@@ -221,7 +221,7 @@ router.on(/^\/foo1\/([^/]{1,})$/, (arg1)=>{
 If you don't need any `RegExp` support in your route or hooks, you can use the second argument of the `WebRouter` constructor to declare routes.
 
 ```javascript
-const router = new WebRouter(null, {
+const router = new WebRouter({
   '/foo1':()=>{
     /* ... */
   },
