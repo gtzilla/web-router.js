@@ -1,6 +1,6 @@
 {
   "name": "web-router.js",
-  "version": "3.0.2",
+  "version": "3.0.3",
   "description": "A modern vanilla web router, inspired by Navigo, testing with Jest & JSDOM",
   "main": "dist/web-router.js",
   "source": "src/index.js",
