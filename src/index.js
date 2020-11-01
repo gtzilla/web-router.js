@@ -6,7 +6,6 @@
 
 import _ from 'underscore';
 
-let _root = null;
 let _routes = {};
 let DEBUG = false;
 let autoListen = true;
@@ -96,8 +95,7 @@ function locationChange(evt) {
   @class 
 */
 export class WebRouter {
-  constructor(path='/', routes={}) {
-    _root = path;
+  constructor(routes={}) {
     lastResolved = null;
     for(const key in routes) {
       const value = routes[key];
@@ -268,9 +266,7 @@ export class WebRouter {
     }
     return this;
   }
-  get root() {
-    return _root;
-  }
+
 
   /**
     @return {object}
@@ -280,12 +276,6 @@ export class WebRouter {
   }   
   static set autoListen(value) {
     autoListen = !!(value);
-  }
-  static get root() {
-    return _root;
-  }
-  static setRoot(path) {
-    _root = path;
   }
   static get routes() {
     return _routes;
@@ -298,7 +288,6 @@ export class WebRouter {
   }
   static reset() {
     _routes = {}
-    _root = null;
     autoListen = true;
     lastResolved = null;
     notFoundHandler = null;

@@ -12,8 +12,6 @@ describe('Validty of build', ()=>{
     expect(_.isFunction(router.off)).toBeTruthy();
     expect(_.isFunction(router.updatePageLinks)).toBeTruthy();
     expect(_.isFunction(router.resolve)).toBeTruthy();
-    expect(_.isFunction(router.navigate)).toBeTruthy();
-    expect(_.isFunction(WebRouter.setRoot)).toBeTruthy();
-    expect(WebRouter.root).toBe('/');    
+    expect(_.isFunction(router.navigate)).toBeTruthy();  
   });
 });

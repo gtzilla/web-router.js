@@ -6,21 +6,19 @@ import { WebRouter } from '../../src/index.js';
 import _ from 'underscore';
 
 afterEach(() => {
-  // const router = new WebRouter();
-  // router.off();
+  const router = new WebRouter();
+  router.off();
   WebRouter.reset();
 });
-
-
+beforeAll(() => {
+  WebRouter.autoListen = false;
+  delete window.location;
+  window.location = {
+    reload: jest.fn()
+  };
+});
 
 describe('WebRouter Basic', () => {
-  beforeAll(async () => {
-    WebRouter.autoListen = false;
-  });
-  afterEach(() => {
-    const router = new WebRouter();
-    router.off();
-  });
   it('Can be imported', () => {
     expect(WebRouter).toBeTruthy();
   });
@@ -32,67 +30,30 @@ describe('WebRouter Basic', () => {
     expect(_.isFunction(router.resolve)).toBeTruthy();
     expect(_.isFunction(router.navigate)).toBeTruthy();
     expect(_.isFunction(router.notFound)).toBeTruthy();
-    expect(_.isFunction(WebRouter.setRoot)).toBeTruthy();
-    expect(WebRouter.root).toBe('/');
   });
   it('can chain notFound, on and resolve', () => {
     const router = new WebRouter();
     expect.assertions(1);
-    router.notFound(()=>{
+    router.notFound(() => {
       expect(false).toBeTruthy();
     }).on('/f001', () => {
       expect(true).toBeTruthy();
     }).on('/f002').resolve('/f001');
   });
-  it('can handle not found with handler', ()=>{
+  it('can handle not found with handler', () => {
     expect.assertions(1);
     const router = new WebRouter();
     expect.assertions(1);
-    router.notFound(()=>{
+    router.notFound(() => {
       expect(true).toBeTruthy();
-    })
+    });
     router.on('/f001', () => {
       expect(true).toBeTruthy();
     }).on('/not-found').resolve('/f001');
   });
 });
 
-describe('WebRouter Root value', () => {
-  beforeAll(() => {
-    WebRouter.autoListen = false;
-    delete window.location;
-    window.location = {
-      reload: jest.fn()
-    };
-  });
-  afterEach(() => {
-    const router = new WebRouter();
-    router.off();
-  });
-  it('can be set to default', () => {
-    const router = new WebRouter('/', null);
-    expect(router.root).toBe('/');
-  });
-  it('can be set to any value, string', () => {
-    const router = new WebRouter('/something', null);
-    expect(router.root).toBe('/something');
-    WebRouter.setRoot('/another-value');
-    expect(router.root).toBe('/another-value');
-  });
-  it('can be set to any value, null', () => {
-    const router = new WebRouter();
-    expect(router.root).toBe('/');
-  });
-});
-
 describe('WebRouter `.on()`', () => {
-  beforeAll(() => {
-    WebRouter.autoListen = false;
-  });
-  afterEach(() => {
-    const router = new WebRouter();
-    router.off();
-  });
   it('assigns routes', () => {
     const router = new WebRouter();
     router.on('/', () => { return true; }, {});
@@ -111,13 +72,6 @@ describe('WebRouter `.on()`', () => {
 });
 
 describe('WebRouter `.off()`', () => {
-  beforeAll(() => {
-    WebRouter.autoListen = false;
-  });
-  afterEach(() => {
-    const router = new WebRouter();
-    router.off();
-  });
   it('Clears all routes when no args', () => {
     const router = new WebRouter();
     router.on('/', () => {});
@@ -132,7 +86,7 @@ describe('WebRouter `.off()`', () => {
 });
 
 /**
-  if parameterized URL patterns are 
+  if parameterized URL patterns are
     /:pattern/:date
     /:pattern
 
@@ -141,29 +95,29 @@ describe('WebRouter `.off()`', () => {
 
   Should not be matching /pattern
 */
-describe('parameterized URL', ()=>{
-  it('is not greedy', ()=>{
-    const router = new WebRouter;
+describe('parameterized URL', () => {
+  it('is not greedy', () => {
+    const router = new WebRouter();
     expect.assertions(2);
-    router.on('/:pattern', ({pattern})=>{
-      expect(true).toBeTruthy()
-    }).on('/:pattern/:date', ({pattern, date})=>{
+    router.on('/:pattern', ({ pattern }) => {
+      expect(true).toBeTruthy();
+    }).on('/:pattern/:date', ({ pattern, date }) => {
       expect(pattern).toEqual('66,55,55,55,55');
       expect(date).toEqual('2020-10-17');
     }).resolve('/66,55,55,55,55/2020-10-17');
   });
 
-  it('is not greedy, reverse declaration', ()=>{
-    const router = new WebRouter;
+  it('is not greedy, reverse declaration', () => {
+    const router = new WebRouter();
     expect.assertions(2);
-    router.on('/:pattern/:date', ({pattern, date})=>{
+    router.on('/:pattern/:date', ({ pattern, date }) => {
       expect(pattern).toEqual('66,55,55,55,55');
       expect(date).toEqual('2020-10-17');
-    }).on('/:pattern', ({pattern})=>{
-      expect(true).toBeTruthy()
+    }).on('/:pattern', ({ pattern }) => {
+      expect(true).toBeTruthy();
     }).resolve('/66,55,55,55,55/2020-10-17');
-  });  
-})
+  });
+});
 
 describe('WebRouter .navigate() adds to history length', () => {
   /**
@@ -178,10 +132,6 @@ describe('WebRouter .navigate() adds to history length', () => {
     window.onpopstate = function (evt) {
       historyPopped = true;
     };
-  });
-  afterEach(() => {
-    const router = new WebRouter();
-    router.off();
   });
   it('Added to history', () => {
     const router = new WebRouter();
@@ -205,10 +155,6 @@ describe('WebRouter .resolve() routes', () => {
     delete window.location.pathname;
     window.location.pathname = '/foo1';
   });
-  afterEach(() => {
-    const router = new WebRouter();
-    router.off();
-  });
   it('resolves to path', () => {
     let count = 0;
     const router = new WebRouter();
@@ -220,26 +166,26 @@ describe('WebRouter .resolve() routes', () => {
   });
 });
 
-describe('leave hook', ()=>{
+describe('leave hook', () => {
   /**
     https://stackoverflow.com/questions/57614973/testing-popstate-event-with-jest
     works ok, could be better
   */
-  const mockAddEventListener = jest.fn();  
+  const mockAddEventListener = jest.fn();
   const orig = window.addEventListener;
-  beforeAll(()=>{
+  beforeAll(() => {
     window.addEventListener = mockAddEventListener;
-  });  
-  afterAll(()=>{
+  });
+  afterAll(() => {
     window.addEventListener = orig;
   });
-  it('can trigger leave', testDone=>{
+  it('can trigger leave', testDone => {
     expect.assertions(5);
     const router = new WebRouter();
-    router.on('/foo321', ()=>{
+    router.on('/foo321', () => {
       expect(true).toBeTruthy();
     }, {
-      leave:(done, evt)=>{
+      leave: (done, evt) => {
         expect(evt).toBeDefined();
         expect(evt.state).toBeDefined();
         expect(evt.state.foo).toBeTruthy();
@@ -247,10 +193,10 @@ describe('leave hook', ()=>{
       }
     }).resolve('/foo321');
     expect(mockAddEventListener.mock.calls[0][0]).toBe('popstate');
-    const state = {foo:true}
-    mockAddEventListener.mock.calls[0][1]({state});     
+    const state = { foo: true };
+    mockAddEventListener.mock.calls[0][1]({ state });
     router.navigate('/bar321', state);
-    delete window.addEventListener
+    delete window.addEventListener;
   });
 });
 
@@ -258,10 +204,6 @@ describe('WebRouter after hook', () => {
   beforeAll(() => {
     delete window.location.pathname;
     window.location.pathname = '/foo1';
-  });
-  afterEach(() => {
-    const router = new WebRouter();
-    router.off();
   });
   it('can accept array', () => {
     expect.assertions(5);
@@ -325,10 +267,7 @@ describe('WebRouter before hook method', () => {
     delete window.location.pathname;
     window.location.pathname = '/foo1';
   });
-  afterEach(() => {
-    const router = new WebRouter();
-    router.off();
-  });
+
   it('can accept array', () => {
     let count = 0;
     expect.assertions(2);
@@ -432,10 +371,6 @@ describe('RegExp Route Matching', () => {
     delete window.location.pathname;
     window.location.pathname = '/foo/america/plain';
   });
-  afterEach(() => {
-    const router = new WebRouter();
-    router.off();
-  });
   it('matches basic regexp', () => {
     const router = new WebRouter();
     expect.assertions(2);
@@ -494,10 +429,6 @@ describe('WebRouter transforms /foo/:someValue/:anotherValue', () => {
     delete window.location.pathname;
     window.location.pathname = '/foo/america/purple';
   });
-  afterEach(() => {
-    const router = new WebRouter();
-    router.off();
-  });
   it('transforms two :arg into RegExp', () => {
     expect.assertions(5);
     const router = new WebRouter();
@@ -512,73 +443,62 @@ describe('WebRouter transforms /foo/:someValue/:anotherValue', () => {
   });
 });
 
-describe('Example code, Readme, declaration', ()=>{
+describe('Example code, Readme, declaration', () => {
   beforeAll(() => {
     delete window.location.pathname;
     window.location.pathname = '/some/url';
   });
-  afterEach(() => {
-    const router = new WebRouter();
-    router.off();
-  });  
-  it('can be simply declared with routes', ()=>{
+  it('can be simply declared with routes', () => {
     expect.assertions(1);
-    new WebRouter(null, {
-    '/some/url':()=>{ 
-      expect(true).toBeTruthy();
-    }
-    }).resolve();    
+    new WebRouter({
+      '/some/url': () => {
+        expect(true).toBeTruthy();
+      }
+    }).resolve();
   });
 });
 
-describe('Example code, Readme, chaining', ()=>{
-  it('can be chained', testDone=>{
+describe('Example code, Readme, chaining', () => {
+  it('can be chained', testDone => {
     expect.assertions(4);
     const urlFragment = 'anything_is_here';
     const router = new WebRouter();
     expect(router).toBeDefined();
-    router.on(/^\/foo1\/([^/]{1,})$/, (arg1)=>{
+    router.on(/^\/foo1\/([^/]{1,})$/, (arg1) => {
       // Do main rendering...
       expect(arg1).toEqual('anything_is_here');
       testDone();
     }, {
-      before:[(done,params)=>{
+      before: [(done, params) => {
         // ...
         expect(true).toBeTruthy();
         done();
-      },(done, params)=>{
+      }, (done, params) => {
         // ...
         expect(true).toBeTruthy();
         done();
-        
       }]
-    }).on('/foo2', ()=>{
+    }).on('/foo2', () => {
       // Do main rendering...
       expect(true).toBeTruthy();
     }, {
-      after:[(done,params)=>{
+      after: [(done, params) => {
         // not called
         expect(true).toBeTruthy();
         done();
-      },(done, params)=>{
+      }, (done, params) => {
         // not called
         expect(true).toBeTruthy();
         done();
       }]
     }).resolve('/foo1/' + urlFragment);
   });
-})
-
-
+});
 
 describe('WebRouter transforms colon prefix into RegExp', () => {
   beforeAll(() => {
     delete window.location.pathname;
     window.location.pathname = '/foo/america/purple/plain';
-  });
-  afterEach(() => {
-    const router = new WebRouter();
-    router.off();
   });
   it('transforms two :arg into RegExp', () => {
     expect.assertions(5);
@@ -610,10 +530,6 @@ describe('WebRouter transforms /foo/:someValue ', () => {
     delete window.location.pathname;
     window.location.pathname = '/foo/america';
   });
-  afterEach(() => {
-    const router = new WebRouter();
-    router.off();
-  });
   it('transforms one :arg into RegExp', (...args) => {
     expect.assertions(4);
     const router = new WebRouter();
@@ -630,7 +546,7 @@ describe('WebRouter transforms /foo/:someValue ', () => {
 describe('Routes in Constructor', () => {
   it('Can accept a collection of routes', () => {
     expect.assertions(1);
-    const router = new WebRouter(null, {
+    const router = new WebRouter({
       '/foo1': () => {
         expect(true).toBeTruthy();
       },
