@@ -27,9 +27,15 @@ describe('WebRouter Basic', () => {
     expect(_.isFunction(router.on)).toBeTruthy();
     expect(_.isFunction(router.off)).toBeTruthy();
     expect(_.isFunction(router.updatePageLinks)).toBeTruthy();
+    expect(_.isFunction(router.listen)).toBeTruthy();
     expect(_.isFunction(router.resolve)).toBeTruthy();
     expect(_.isFunction(router.navigate)).toBeTruthy();
     expect(_.isFunction(router.notFound)).toBeTruthy();
+    expect(router.all).toBeDefined();
+    expect(_.isFunction(WebRouter.addPageLinkSelectors)).toBeTruthy();
+    expect(_.isFunction(WebRouter.reset)).toBeTruthy();
+    expect(WebRouter.routes).toBeDefined();
+    expect(WebRouter.lastResolved).toBeDefined();
   });
   it('can chain notFound, on and resolve', () => {
     const router = new WebRouter();

@@ -32,6 +32,11 @@ function recursionMethods(items, params=null, callback) {
 }
 
 /**
+  @param {string} hookType - before, after or leave
+  @param {RouteInfo} route object
+  @param {object} params
+  @param {function} callback
+
   Pass the callback through
 */
 function callHook(hookType, info, params=null, callback=()=>{}) {
@@ -48,7 +53,7 @@ function callHook(hookType, info, params=null, callback=()=>{}) {
   }
 }
 /**
-  @param {object} info - the value matched from _routes
+  @param {RouteInfo} info - the value matched from _routes
   @param {object|array|null} - route matching
 */
 function callBeforeAndMain(info, params=null) {
@@ -61,7 +66,7 @@ function callBeforeAndMain(info, params=null) {
   });
 }
 /**
-  @param {object} info - the value matched from _routes
+  @param {RouteInfo} info - the value matched from _routes
   @param {object|array|null} - route matching
   @param {function} callback - method to call when completed. 
 */
@@ -70,7 +75,7 @@ function callAfter(info, params=null, callback=(allow)=>{}) {
 }
 
 /**
-  @param {object} info - the value matched from _routes
+  @param {RouteInfo} info - the value matched from _routes
   @param {object|array|null} - route matching
   @param {function} callback - method to call when completed. 
 */
@@ -80,6 +85,8 @@ function callLeave(info, params=null, callback=(allow)=>{}) {
 
 /**
   @param {Event} evt - the window popstate event
+
+  @return {WebRouter}
 */
 function locationChange(evt) {
   if(lastResolved) {
@@ -87,6 +94,14 @@ function locationChange(evt) {
     callLeave(lastResolved, evt);
   }
   this.resolve();
+  return this;
+}
+
+/**
+  Formalize the route information
+*/
+function RouteInfo(props) {
+  Object.assign(this, props);
   return this;
 }
 
@@ -133,13 +148,13 @@ export class WebRouter {
       });
       routeName = new RegExp('^' + remapped.join('/') + '$');
     }
-    _routes[name] = {
+    _routes[name] = new RouteInfo({
       name,
       regExp:isRegExp ? routeName : null,
       regExpKeys:keys,
       method,
       hooks
-    }
+    });
     return this;   
   } 
   /**
@@ -211,7 +226,9 @@ export class WebRouter {
     this.resolve();
     return this;
   }
-
+  /**
+    @return {WebRouter}
+  */
   notFound(handler) {
     if(_.isFunction(handler)) {
       notFoundHandler = handler;  
@@ -266,8 +283,6 @@ export class WebRouter {
     }
     return this;
   }
-
-
   /**
     @return {object}
   */
@@ -277,6 +292,9 @@ export class WebRouter {
   static set autoListen(value) {
     autoListen = !!(value);
   }
+  /**
+    @return {object}
+  */  
   static get routes() {
     return _routes;
   }
