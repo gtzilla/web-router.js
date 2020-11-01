@@ -218,7 +218,7 @@ router.on(/^\/foo1\/([^/]{1,})$/, (arg1)=>{
 
 ### Convenience, Simple Declarations
 
-If you don't need any `RegExp` support in your route or hooks, you can use the second argument of the `WebRouter` constructor to declare routes.
+If you don't need any `RegExp` support in your route or hooks, you can use the first argument of the `WebRouter` constructor to declare routes.
 
 ```javascript
 const router = new WebRouter({

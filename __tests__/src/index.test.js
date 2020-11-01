@@ -564,6 +564,27 @@ describe('Routes in Constructor', () => {
   });
 });
 
+describe('Bad inputs', () => {
+  it('bad constructors', () => {
+    expect.assertions(2);
+    const router = new WebRouter(() => {
+      return null;
+    });
+    expect(router).toBeDefined();
+    expect(_.isObject(router.all)).toBeTruthy();
+    router.resolve();
+  });
+
+  it('handles bad .on()', () => {
+    const router = new WebRouter();
+    try {
+      router.on();
+    } catch (err) {
+      expect(false).toBeTruthy();
+    }
+  });
+});
+
 describe('WebRouter updatePageLinks', () => {
   beforeAll(() => {
     WebRouter.autoListen = false;

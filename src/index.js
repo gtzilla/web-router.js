@@ -128,7 +128,7 @@ export class WebRouter {
 
     @return {WebRouter}
   */
-  on(routeName, method, hooks={}) {
+  on(routeName='/', method, hooks={}) {
     if(DEBUG) console.log(".on(", routeName, method, hooks, ")");
     let name = routeName;
     let isRegExp = false;
@@ -262,13 +262,11 @@ export class WebRouter {
             const key = value.regExpKeys[idx];
             raw[key] = item;
           });
-        }
-        const params = value.regExpKeys.length ? raw : matched.slice(1);
-        if(matched && matched.length) {
+          const params = value.regExpKeys.length ? raw : matched.slice(1);
           wasMatched = true;
-          lastResolved = value;
+          lastResolved = value;          
           callBeforeAndMain(value, params);
-          callAfter(value, params);
+          callAfter(value, params);          
         }
       }
     }
@@ -288,9 +286,10 @@ export class WebRouter {
   */
   get all() {
     return _routes;
-  }   
+  }
+
   static set autoListen(value) {
-    autoListen = !!(value);
+    return autoListen = !!(value);
   }
   /**
     @return {object}
