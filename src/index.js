@@ -4,7 +4,7 @@
   See README.md and __tests__/src/index.test.js
 */
 
-import _ from 'lodash';
+import _ from 'underscore';
 
 let _routes = {};
 let DEBUG = false;
@@ -22,11 +22,11 @@ let notFoundHandler = null;
 */
 function recursionMethods(items, params=null, callback) {
   if(!items.length) { return callback(true); }
-  const first = _.head(items);
+  const first = _.first(items);
   if(_.isFunction(first)) {
     first((allow=true)=>{
       if(!allow) { return callback(false); }
-      recursionMethods(_.tail(items), params, callback);
+      recursionMethods(_.rest(items), params, callback);
     });
   }
 }
@@ -192,7 +192,7 @@ export class WebRouter {
     if(DEBUG) console.log('updatePageLinks', pageLinkNames);
     pageLinkNames.forEach(name=>{
       const links = document.querySelectorAll(name);
-      _.forEach(links, el=>{
+      _.each(links, el=>{
         if(!el.hasListenerAttached) {
           el.addEventListener('click', (evt)=>{
             if(DEBUG) { 
