@@ -659,6 +659,29 @@ describe('Bad inputs', () => {
   });
 });
 
+describe('WebRouter handle URL encoded values as expected', ()=>{
+  beforeAll(() => {
+    WebRouter.autoListen = false;
+  });  
+  const testString = 'one:value another two:value';
+  it('Handles parameterized URI decode', ()=>{
+    const router = new WebRouter();
+    router.on('/something/:something', ({something})=>{
+      expect(something).toEqual(testString);
+    });
+    router.resolve(`/something/${encodeURI(testString)}`)
+  });
+
+  it('Handles positional URI decode', ()=>{
+    const router = new WebRouter();
+    const testString = 'one:value another two:value';
+    router.on(/^\/something\/([^/]{3,})/, (something)=>{
+      expect(something).toEqual(testString);
+    });
+    router.resolve(`/something/${encodeURI(testString)}`)    
+  });
+})
+
 describe('WebRouter updatePageLinks', () => {
   beforeAll(() => {
     WebRouter.autoListen = false;

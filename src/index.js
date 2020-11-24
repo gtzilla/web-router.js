@@ -259,9 +259,9 @@ export class WebRouter {
         if(matched && matched.length) {
           keyMatches.forEach((item, idx)=>{
             const key = value.regExpKeys[idx];
-            raw[key] = item;
+            raw[key] = decodeURIComponent(item);
           });
-          const params = value.regExpKeys.length ? raw : matched.slice(1);
+          const params = value.regExpKeys.length ? raw : matched.slice(1).map(item=>decodeURIComponent(item));
           wasMatched = true;
           lastResolved = value;
           callBeforeAndMain(value, params);
