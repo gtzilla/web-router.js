@@ -239,9 +239,9 @@ const router = new WebRouter({
 
 ##### Developing for WebRouter Project
 
-Configuration For Testing: It is advised to use at least node version 14.5.0
+Configuration For Testing: It is advised to use at least node version 16.6.2
 
 ```
-nvm install 14.5.0
+nvm install 16.6.2
 ```
 
